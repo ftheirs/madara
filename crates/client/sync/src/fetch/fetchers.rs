@@ -216,3 +216,59 @@ async fn fetch_class(
     let contract_class = provider.get_class(starknet_core::types::BlockId::from(block_id), class_hash).await?;
     Ok((class_hash, contract_class))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_retry_success() {
+        let attempts = Cell::new(0);
+
+        let result: Result<i32, ProviderError> = retry(
+            || {
+                let attempts_ref = &attempts;
+                async move {
+                    attempts_ref.set(attempts_ref.get() + 1);
+                    if attempts_ref.get() < 3 {
+                        Err(ProviderError::RateLimited)
+                    } else {
+                        Ok(42)
+                    }
+                }
+            },
+            5,
+            Duration::from_millis(10),
+        )
+        .await;
+
+        match result {
+            Ok(value) => assert_eq!(value, 42),
+            Err(e) => panic!("Expected Ok(42), got Err({:?})", e),
+        }
+        assert_eq!(attempts.get(), 3);
+    }
+
+    #[test]
+    fn test_fetch_block_id_block_n() {
+        // Test with a specific block number
+        let block_id = FetchBlockId::BlockN(42);
+        assert_eq!(block_id.block_n(), Some(42));
+
+        // Test with zero
+        let block_id = FetchBlockId::BlockN(0);
+        assert_eq!(block_id.block_n(), Some(0));
+
+        // Test with a large number
+        let block_id = FetchBlockId::BlockN(u64::MAX);
+        assert_eq!(block_id.block_n(), Some(u64::MAX));
+    }
+
+    #[test]
+    fn test_fetch_block_id_pending() {
+        let block_id = FetchBlockId::Pending;
+        assert_eq!(block_id.block_n(), None);
+    }
+}
