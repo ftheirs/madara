@@ -193,3 +193,37 @@ pub fn convert_and_verify_class(
         })
         .collect::<Result<Vec<_>, _>>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use starknet_core::types::L1DataAvailabilityMode as ProviderL1DataAvailabilityMode;
+    use starknet_core::types::ResourcePrice;
+
+    #[test]
+    fn test_protocol_version() {
+        assert_eq!(protocol_version(None).unwrap(), StarknetVersion::default());
+        assert_eq!(protocol_version(Some("0.11.0".to_string())).unwrap(), StarknetVersion::new(0, 11, 0, 0));
+        assert!(protocol_version(Some("invalid_version".to_string())).is_err());
+    }
+
+    #[test]
+    fn test_resource_price() {
+        let l1_gas_price = ResourcePrice { price_in_wei: Felt::from(100u128), price_in_fri: Felt::from(200u128) };
+        let l1_data_gas_price = ResourcePrice { price_in_wei: Felt::from(300u128), price_in_fri: Felt::from(400u128) };
+
+        let result = resource_price(l1_gas_price, l1_data_gas_price).unwrap();
+
+        assert_eq!(result.eth_l1_gas_price, 100);
+        assert_eq!(result.strk_l1_gas_price, 200);
+        assert_eq!(result.eth_l1_data_gas_price, 300);
+        assert_eq!(result.strk_l1_data_gas_price, 400);
+    }
+
+    #[test]
+    fn test_l1_da_mode() {
+        assert_eq!(l1_da_mode(ProviderL1DataAvailabilityMode::Calldata), L1DataAvailabilityMode::Calldata);
+        assert_eq!(l1_da_mode(ProviderL1DataAvailabilityMode::Blob), L1DataAvailabilityMode::Blob);
+    }
+}
