@@ -222,3 +222,101 @@ impl<'a> State for BlockifierStateAdapter<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use blockifier::execution::contract_class::ContractClassV0;
+    use starknet_api::core::ContractAddress;
+    use starknet_api::hash::StarkFelt;
+
+    #[test]
+    fn test_increment_nonce() {
+        // Create a mock DeoxysBackend
+        let mock_backend = DeoxysBackend::new_in_memory(0);
+
+        // Create a BlockifierStateAdapter instance
+        let mut adapter = BlockifierStateAdapter::new(&mock_backend, None);
+
+        // // Create a test contract address
+        let contract_address = ContractAddress::from(123u8);
+
+        // // Set initial nonce
+        adapter.nonce_update.insert(contract_address, Nonce(StarkFelt::from(42u8)));
+
+        // Increment nonce
+        assert!(adapter.increment_nonce(contract_address).is_ok());
+
+        // // Check if the nonce was incremented
+        let new_nonce = adapter.get_nonce_at(contract_address).unwrap();
+        let expected_nonce = Nonce(StarkFelt::from(43u8));
+        assert_eq!(new_nonce, expected_nonce);
+    }
+
+    #[test]
+    fn test_set_class_hash_at() {
+        // Create a mock DeoxysBackend
+        // let mock_backend = DeoxysBackend::default();
+        let mock_backend = DeoxysBackend::new_in_memory(1);
+
+        // Create a BlockifierStateAdapter instance
+        let mut adapter = BlockifierStateAdapter::new(&mock_backend, None);
+
+        // Create a test contract address and class hash
+        let contract_address = ContractAddress::from(456u16);
+        let class_hash = ClassHash(StarkFelt::from(789u128));
+
+        // Set the class hash
+        assert!(adapter.set_class_hash_at(contract_address, class_hash).is_ok());
+
+        // Check if the class hash was set correctly
+        let result = adapter.get_class_hash_at(contract_address);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), class_hash);
+    }
+
+    #[test]
+    fn test_set_contract_class() {
+        // Create a mock DeoxysBackend
+        let mock_backend = DeoxysBackend::new_in_memory(2);
+
+        // Create a BlockifierStateAdapter instance
+        let mut adapter = BlockifierStateAdapter::new(&mock_backend, None);
+
+        // Create a test class hash
+        let class_hash = ClassHash(StarkFelt::from(123u128));
+
+        // Create a dummy ContractClass
+        // let contract_class = ContractClass::default();
+        let contract_class = ContractClass::V0(ContractClassV0::default());
+
+        // Set the contract class
+        assert!(adapter.set_contract_class(class_hash, contract_class.clone()).is_ok());
+
+        // Check if the contract class was set correctly
+        let result = adapter.get_compiled_contract_class(class_hash);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), contract_class);
+    }
+
+    #[test]
+    fn test_set_compiled_class_hash() {
+        // Create a mock DeoxysBackend
+        let mock_backend = DeoxysBackend::new_in_memory(3);
+
+        // Create a BlockifierStateAdapter instance
+        let mut adapter = BlockifierStateAdapter::new(&mock_backend, None);
+
+        // Create test class hash and compiled class hash
+        let class_hash = ClassHash(StarkFelt::from(456u128));
+        let compiled_class_hash = CompiledClassHash(StarkFelt::from(789u128));
+
+        // Set the compiled class hash
+        assert!(adapter.set_compiled_class_hash(class_hash, compiled_class_hash).is_ok());
+
+        // Check if the compiled class hash was set correctly
+        let result = adapter.get_compiled_class_hash(class_hash);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), compiled_class_hash);
+    }
+}

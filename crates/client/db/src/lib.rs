@@ -464,6 +464,16 @@ impl DeoxysBackend {
 
         storage_size
     }
+
+    #[cfg(feature = "testing")]
+    pub fn new_in_memory(id: u64) -> Self {
+        // Create an in-memory RocksDB instance for testing
+        let mut opts = Options::default();
+        opts.create_if_missing(true);
+        let db = DB::open_default(format!(":memory:{}", id)).expect("Failed to create in-memory DB");
+
+        Self { backup_handle: None, db: Arc::new(db), last_flush_time: Mutex::new(None) }
+    }
 }
 
 pub mod bonsai_identifier {
